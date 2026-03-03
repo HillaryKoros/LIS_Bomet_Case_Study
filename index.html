@@ -1,117 +1,623 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Koimeret Parcel Viewer</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.3.1/dist/css/bootstrap.min.css">
-    
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-        }
-
-        #map {
-            height: 500px; /* Set a specific height for the map */
-        }
-
-        nav {
-            background-color: #204060; /* A more professional color */
-            color: white;
-            padding: 15px 0;
-        }
-
-        .nav-container {
-            max-width: 960px;
-            margin: 0 auto;
-            display: flex;
-            align-items: center;
-            justify-content: space-between; 
-        }
-
-        .nav-links a {
-            color: white;
-            margin: 0 10px; 
-            text-decoration: none;
-        }
-
-        #content { 
-            padding: 20px;
-            max-width: 960px;
-            margin: 20px auto; /* Add top margin for spacing */
-        }
-
-        .query-section {
-            background-color: #f0f0f0;
-            padding: 20px;
-            border-radius: 5px;
-            margin-bottom: 20px; /* Add spacing below */
-        }
-
-      
-
-        footer {
-            background-color: #333;
-            color: white;
-            text-align: center;
-            padding: 10px;
-            margin-top: 20px; /* Add spacing */
-        }
-
-        #parcelDataTable table {
-    border-collapse: collapse; /* Make table borders collapse into single lines */
-    width: 100%; /* Make table fill available width */
-}
-
-#parcelDataTable th, 
-#parcelDataTable td {
-    border: 1px solid #ddd; /* Add a light gray border */
-    padding: 8px;          /* Add space within the cells  */
-    text-align: left;      /* Optionally align text left */
-}
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Koimeret Land Information System — Bomet County</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <nav>
-        <div class="nav-container">
-            <div class="nav-brand">Koimeret Parcel Viewer</div>
-            <div class="nav-links"> 
-                <a href="#">Home</a>
-                <a href="#">About</a>
-                <a href="#">Contact</a> 
-            </div>
+
+  <!-- Loading -->
+  <div class="loading-overlay" id="loadingOverlay">
+    <div class="loader-wrap">
+      <div class="loader"></div>
+      <h2>Koimeret Land Information System</h2>
+      <p>Loading parcels &amp; map data...</p>
+    </div>
+  </div>
+
+  <!-- Header -->
+  <header class="header">
+    <div class="header-left">
+      <button class="nav-toggle" id="navToggle">
+        <svg viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="15" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+      <div class="header-brand">
+        <div class="brand-icon">
+          <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/></svg>
         </div>
+        <div>
+          <h1>Koimeret LIS</h1>
+          <span>Bomet County</span>
+        </div>
+      </div>
+    </div>
+    <div class="header-stats" id="headerStats">
+      <div class="stat-chip"><span class="num" id="totalParcels">—</span><span>Parcels</span></div>
+      <div class="stat-chip"><span class="num" id="totalArea">—</span><span>Ha Total</span></div>
+      <div class="stat-chip"><span class="num" id="avgArea">—</span><span>Ha Avg</span></div>
+    </div>
+    <div class="header-right">
+      <button class="header-btn" id="exportPageBtn" title="Export current view">
+        <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      </button>
+      <!-- TODO: Backend required for auth -->
+      <button class="header-btn user-btn" id="loginBtn" title="Sign in (requires backend)">
+        <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Layout -->
+  <div class="app-layout">
+
+    <!-- Sidebar Navigation -->
+    <nav class="sidebar-nav" id="sidebarNav">
+      <div class="nav-section">
+        <div class="nav-label">Main</div>
+        <a class="nav-item active" data-page="parcels">
+          <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+          <span>Parcel Viewer</span>
+        </a>
+        <a class="nav-item" data-page="dashboard">
+          <svg viewBox="0 0 24 24"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg>
+          <span>Dashboard</span>
+        </a>
+        <a class="nav-item" data-page="search">
+          <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <span>Official Search</span>
+        </a>
+      </div>
+      <div class="nav-section">
+        <div class="nav-label">Land Services</div>
+        <a class="nav-item" data-page="registration">
+          <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          <span>Registration</span>
+        </a>
+        <a class="nav-item" data-page="administration">
+          <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          <span>Administration</span>
+        </a>
+        <a class="nav-item" data-page="planning">
+          <svg viewBox="0 0 24 24"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>
+          <span>Physical Planning</span>
+        </a>
+        <a class="nav-item" data-page="survey">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
+          <span>Survey &amp; Mapping</span>
+        </a>
+        <a class="nav-item" data-page="valuation">
+          <svg viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+          <span>Valuation</span>
+        </a>
+      </div>
+      <div class="nav-section">
+        <div class="nav-label">Tools</div>
+        <a class="nav-item" data-page="export">
+          <svg viewBox="0 0 24 24"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+          <span>Export / Print</span>
+        </a>
+        <a class="nav-item" data-page="calculator">
+          <svg viewBox="0 0 24 24"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="10" x2="8" y2="10.01"/><line x1="12" y1="10" x2="12" y2="10.01"/><line x1="16" y1="10" x2="16" y2="10.01"/><line x1="8" y1="14" x2="8" y2="14.01"/><line x1="12" y1="14" x2="12" y2="14.01"/><line x1="16" y1="14" x2="16" y2="14.01"/><line x1="8" y1="18" x2="16" y2="18"/></svg>
+          <span>Stamp Duty Calc</span>
+        </a>
+      </div>
+      <div class="nav-footer">
+        <div class="nav-footer-text">
+          Dept. of Land, Housing &amp; Urban Planning<br>Bomet County Government
+        </div>
+      </div>
     </nav>
 
-    <div id="content">
-        <div class="container">
-            <div class="query-section">
-                <!--<h5 class="card-title">Parcel Information</h5> -->
-                <p class="card-text">Enter the Parcel ID below to query information about it.</p>
-                <input type="text" id="parcelQuery" class="form-control mb-3" placeholder="Enter Parcel ID">
-                <button id="queryButton" class="btn btn-primary">Query</button>
-                <div id="parcelData"></div>
+    <!-- Content Area -->
+    <main class="main-content" id="mainContent">
+
+      <!-- ═══════ PAGE: Parcel Viewer ═══════ -->
+      <div class="page active" id="page-parcels">
+        <div class="parcel-layout">
+          <div class="parcel-sidebar" id="parcelSidebar">
+            <div class="panel-search">
+              <div class="search-box">
+                <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input type="text" id="searchInput" placeholder="Search parcel ID..." autocomplete="off">
+                <div class="search-suggestions" id="suggestions"></div>
+              </div>
             </div>
+            <div class="filter-bar">
+              <button class="chip active" data-filter="all">All</button>
+              <button class="chip" data-filter="small">&lt; 0.25 Ha</button>
+              <button class="chip" data-filter="medium">0.25–1 Ha</button>
+              <button class="chip" data-filter="large">&gt; 1 Ha</button>
+            </div>
+            <div class="list-header">
+              <span>Parcels</span>
+              <span id="filteredCount"></span>
+            </div>
+            <div class="parcel-list" id="parcelList"></div>
+
+            <!-- Detail Panel -->
+            <div class="detail-panel" id="detailPanel">
+              <div class="detail-header">
+                <button class="back-btn" id="detailBack">
+                  <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+                </button>
+                <span class="detail-title" id="detailTitle"></span>
+                <button class="icon-btn" id="detailExport" title="Export this parcel">
+                  <svg viewBox="0 0 24 24"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+                </button>
+              </div>
+              <div class="detail-body" id="detailBody"></div>
+            </div>
+          </div>
+
+          <div class="map-wrap">
+            <div class="map-toolbar">
+              <button class="map-btn" id="sidebarToggle" title="Toggle sidebar">
+                <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
+              </button>
+              <div class="map-toolbar-sep"></div>
+              <button class="map-btn" id="zoomIn" title="Zoom in"><svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
+              <button class="map-btn" id="zoomOut" title="Zoom out"><svg viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
+              <button class="map-btn" id="fitBounds" title="Fit all"><svg viewBox="0 0 24 24"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg></button>
+              <div class="map-toolbar-sep"></div>
+              <div class="layer-select">
+                <button class="map-btn" id="layerBtn" title="Base map"><svg viewBox="0 0 24 24"><polygon points="12 2 2 7 12 12 22 7"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg></button>
+                <div class="layer-dropdown" id="layerDropdown">
+                  <button class="layer-opt active" data-layer="streets">Streets</button>
+                  <button class="layer-opt" data-layer="satellite">Satellite</button>
+                  <button class="layer-opt" data-layer="topo">Topo</button>
+                </div>
+              </div>
+            </div>
+            <div id="map"></div>
+            <div class="map-tooltip visible" id="mapTooltip">Click a parcel or search by ID &middot; Press <kbd>/</kbd> to search</div>
+          </div>
         </div>
-        <div class="container">
-          <div id="parcelDataTable"></div> </div>
+      </div>
 
-          
-        <div id="map"></div>
+      <!-- ═══════ PAGE: Dashboard ═══════ -->
+      <div class="page" id="page-dashboard">
+        <div class="page-header">
+          <h2>Land Statistics Dashboard</h2>
+          <p>Overview of all registered parcels in Koimeret area</p>
+        </div>
+        <div class="dashboard-grid">
+          <div class="dash-card stat-card">
+            <div class="stat-icon si-green"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/></svg></div>
+            <div><div class="stat-val" id="dTotalParcels">—</div><div class="stat-label">Total Parcels</div></div>
+          </div>
+          <div class="dash-card stat-card">
+            <div class="stat-icon si-blue"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/></svg></div>
+            <div><div class="stat-val" id="dTotalHa">—</div><div class="stat-label">Total Hectares</div></div>
+          </div>
+          <div class="dash-card stat-card">
+            <div class="stat-icon si-purple"><svg viewBox="0 0 24 24"><path d="M18 20V10M12 20V4M6 20v-6"/></svg></div>
+            <div><div class="stat-val" id="dAvgHa">—</div><div class="stat-label">Average Size (Ha)</div></div>
+          </div>
+          <div class="dash-card stat-card">
+            <div class="stat-icon si-amber"><svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg></div>
+            <div><div class="stat-val" id="dLargest">—</div><div class="stat-label">Largest Parcel (Ha)</div></div>
+          </div>
+          <div class="dash-card chart-card wide">
+            <h3>Size Distribution</h3>
+            <canvas id="chartDistribution"></canvas>
+          </div>
+          <div class="dash-card chart-card">
+            <h3>Classification Breakdown</h3>
+            <canvas id="chartClassification"></canvas>
+          </div>
+          <div class="dash-card chart-card">
+            <h3>Top 10 Largest Parcels</h3>
+            <canvas id="chartTop10"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══════ PAGE: Official Search ═══════ -->
+      <div class="page" id="page-search">
+        <div class="page-header">
+          <h2>Official Land Search</h2>
+          <p>Search for detailed parcel information including ownership and encumbrances</p>
+        </div>
+        <div class="search-page-content">
+          <div class="form-card">
+            <h3>Search Parameters</h3>
+            <div class="form-group">
+              <label>Parcel ID / LR Number</label>
+              <input type="text" id="officialSearchInput" placeholder="Enter Parcel ID e.g. 120">
+            </div>
+            <div class="form-group">
+              <label>Search Type</label>
+              <select id="searchType">
+                <option value="simple">Simple Search (Parcel Info)</option>
+                <option value="full">Full Search (Ownership + Encumbrances)</option>
+              </select>
+            </div>
+            <button class="btn btn-primary" id="officialSearchBtn">
+              <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              Conduct Search
+            </button>
+          </div>
+          <div class="search-result-card" id="searchResultCard" style="display:none">
+            <div class="result-header">
+              <h3>Search Result</h3>
+              <button class="btn btn-outline btn-sm" id="exportSearchResult">
+                <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Export PDF
+              </button>
+            </div>
+            <div id="searchResultBody"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══════ PAGE: Registration ═══════ -->
+      <div class="page" id="page-registration">
+        <div class="page-header">
+          <h2>Land Registration Services</h2>
+          <p>Register land transactions including transfers, charges, and leases</p>
+        </div>
+        <div class="services-grid">
+          <div class="service-card" data-service="transfer">
+            <div class="svc-icon si-green"><svg viewBox="0 0 24 24"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 014-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 01-4 4H3"/></svg></div>
+            <h4>Transfer</h4>
+            <p>Transfer ownership of land from one party to another</p>
+            <span class="svc-tag tag-backend">Requires Backend</span>
+          </div>
+          <div class="service-card" data-service="charge">
+            <div class="svc-icon si-blue"><svg viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg></div>
+            <h4>Charge / Mortgage</h4>
+            <p>Register a charge or mortgage against a property</p>
+            <span class="svc-tag tag-backend">Requires Backend</span>
+          </div>
+          <div class="service-card" data-service="caution">
+            <div class="svc-icon si-amber"><svg viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
+            <h4>Caution</h4>
+            <p>Lodge or remove a caution on a property</p>
+            <span class="svc-tag tag-backend">Requires Backend</span>
+          </div>
+          <div class="service-card" data-service="lease">
+            <div class="svc-icon si-purple"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></div>
+            <h4>Lease Registration</h4>
+            <p>Register new leases or renew existing ones</p>
+            <span class="svc-tag tag-backend">Requires Backend</span>
+          </div>
+          <div class="service-card" data-service="replacement">
+            <div class="svc-icon si-red"><svg viewBox="0 0 24 24"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 11-7.778 7.778 5.5 5.5 0 017.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg></div>
+            <h4>Title Replacement</h4>
+            <p>Apply for replacement of lost or damaged title deed</p>
+            <span class="svc-tag tag-backend">Requires Backend</span>
+          </div>
+          <div class="service-card" data-service="restriction">
+            <div class="svc-icon si-gray"><svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg></div>
+            <h4>Restriction</h4>
+            <p>Register or remove a restriction on a property</p>
+            <span class="svc-tag tag-backend">Requires Backend</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══════ PAGE: Administration ═══════ -->
+      <div class="page" id="page-administration">
+        <div class="page-header">
+          <h2>Land Administration</h2>
+          <p>Manage land subdivisions, lease renewals, and development consent</p>
+        </div>
+        <div class="services-grid">
+          <div class="service-card">
+            <div class="svc-icon si-green"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18"/><line x1="12" y1="3" x2="12" y2="21"/><line x1="3" y1="12" x2="21" y2="12"/></svg></div>
+            <h4>Subdivision</h4>
+            <p>Apply to subdivide a parcel into smaller units</p>
+            <span class="svc-tag tag-backend">Requires Backend</span>
+          </div>
+          <div class="service-card">
+            <div class="svc-icon si-blue"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
+            <h4>Lease Extension</h4>
+            <p>Apply for extension of an existing lease</p>
+            <span class="svc-tag tag-backend">Requires Backend</span>
+          </div>
+          <div class="service-card">
+            <div class="svc-icon si-amber"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg></div>
+            <h4>Change of User</h4>
+            <p>Apply to change land use classification</p>
+            <span class="svc-tag tag-backend">Requires Backend</span>
+          </div>
+          <div class="service-card">
+            <div class="svc-icon si-purple"><svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+            <h4>Consent</h4>
+            <p>Apply for consent to transfer, charge, or subdivide</p>
+            <span class="svc-tag tag-backend">Requires Backend</span>
+          </div>
+          <div class="service-card">
+            <div class="svc-icon si-red"><svg viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg></div>
+            <h4>Land Rent</h4>
+            <p>View and pay land rent invoices</p>
+            <span class="svc-tag tag-backend">Requires Backend</span>
+          </div>
+          <div class="service-card">
+            <div class="svc-icon si-gray"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
+            <h4>Lease Renewal</h4>
+            <p>Renew an expired or expiring lease</p>
+            <span class="svc-tag tag-backend">Requires Backend</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══════ PAGE: Physical Planning ═══════ -->
+      <div class="page" id="page-planning">
+        <div class="page-header">
+          <h2>Physical Planning</h2>
+          <p>Development plan approvals and compliance certificates</p>
+        </div>
+        <div class="services-grid">
+          <div class="service-card">
+            <div class="svc-icon si-green"><svg viewBox="0 0 24 24"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/></svg></div>
+            <h4>Development Plan Approval</h4>
+            <p>Submit part development plans for approval</p>
+            <span class="svc-tag tag-backend">Requires Backend</span>
+          </div>
+          <div class="service-card">
+            <div class="svc-icon si-blue"><svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div>
+            <h4>Certificate of Compliance</h4>
+            <p>Apply for certificate of compliance for a development</p>
+            <span class="svc-tag tag-backend">Requires Backend</span>
+          </div>
+          <div class="service-card">
+            <div class="svc-icon si-purple"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/></svg></div>
+            <h4>Planning Documents</h4>
+            <p>Request planning documents and maps</p>
+            <span class="svc-tag tag-backend">Requires Backend</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══════ PAGE: Survey & Mapping ═══════ -->
+      <div class="page" id="page-survey">
+        <div class="page-header">
+          <h2>Survey &amp; Mapping</h2>
+          <p>Cadastral surveys, boundary demarcation and mapping services</p>
+        </div>
+        <div class="services-grid">
+          <div class="service-card">
+            <div class="svc-icon si-green"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg></div>
+            <h4>Subdivision Survey</h4>
+            <p>Request a cadastral survey for land subdivision</p>
+            <span class="svc-tag tag-backend">Requires Backend</span>
+          </div>
+          <div class="service-card">
+            <div class="svc-icon si-blue"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg></div>
+            <h4>Amalgamation</h4>
+            <p>Combine two or more parcels into one</p>
+            <span class="svc-tag tag-backend">Requires Backend</span>
+          </div>
+          <div class="service-card">
+            <div class="svc-icon si-amber"><svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg></div>
+            <h4>Beacon Placement</h4>
+            <p>Request beacon establishment or re-establishment</p>
+            <span class="svc-tag tag-backend">Requires Backend</span>
+          </div>
+          <div class="service-card">
+            <div class="svc-icon si-purple"><svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></div>
+            <h4>Re-survey</h4>
+            <p>Request re-survey of an existing parcel</p>
+            <span class="svc-tag tag-backend">Requires Backend</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══════ PAGE: Valuation ═══════ -->
+      <div class="page" id="page-valuation">
+        <div class="page-header">
+          <h2>Valuation Services</h2>
+          <p>Property valuation for stamp duty, estate administration and government transactions</p>
+        </div>
+        <div class="services-grid">
+          <div class="service-card">
+            <div class="svc-icon si-green"><svg viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg></div>
+            <h4>Stamp Duty Valuation</h4>
+            <p>Property valuation for stamp duty assessment</p>
+            <span class="svc-tag tag-backend">Requires Backend</span>
+          </div>
+          <div class="service-card">
+            <div class="svc-icon si-blue"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/></svg></div>
+            <h4>Asset Valuation</h4>
+            <p>General asset and property valuation</p>
+            <span class="svc-tag tag-backend">Requires Backend</span>
+          </div>
+          <div class="service-card">
+            <div class="svc-icon si-amber"><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
+            <h4>Estate Administration</h4>
+            <p>Valuation for estate/succession purposes</p>
+            <span class="svc-tag tag-backend">Requires Backend</span>
+          </div>
+          <div class="service-card">
+            <div class="svc-icon si-purple"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M16 16s-1.5-2-4-2-4 2-4 2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg></div>
+            <h4>Arbitration</h4>
+            <p>Valuation for dispute resolution and arbitration</p>
+            <span class="svc-tag tag-backend">Requires Backend</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══════ PAGE: Export / Print ═══════ -->
+      <div class="page" id="page-export">
+        <div class="page-header">
+          <h2>Export &amp; Print</h2>
+          <p>Generate exportable parcel documents with map layout</p>
+        </div>
+        <div class="export-layout">
+          <div class="export-controls">
+            <div class="form-card">
+              <h3>Select Parcel</h3>
+              <div class="form-group">
+                <label>Parcel ID</label>
+                <input type="text" id="exportParcelInput" placeholder="Enter Parcel ID e.g. 120">
+              </div>
+              <button class="btn btn-primary" id="generateExportBtn">
+                <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                Generate Document
+              </button>
+              <div class="export-actions" id="exportActions" style="display:none">
+                <button class="btn btn-primary" id="downloadPNG">
+                  <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                  Download PNG
+                </button>
+                <button class="btn btn-outline" id="downloadPDF">
+                  <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                  Download PDF
+                </button>
+              </div>
+            </div>
+          </div>
+          <div class="export-preview-wrap">
+            <div class="export-preview" id="exportPreview">
+              <div class="export-empty">
+                <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                <p>Enter a Parcel ID and click Generate to preview the export document</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══════ PAGE: Stamp Duty Calculator ═══════ -->
+      <div class="page" id="page-calculator">
+        <div class="page-header">
+          <h2>Stamp Duty Calculator</h2>
+          <p>Calculate stamp duty payable on land transactions</p>
+        </div>
+        <div class="calc-layout">
+          <div class="form-card">
+            <h3>Transaction Details</h3>
+            <div class="form-group">
+              <label>Transaction Type</label>
+              <select id="calcType">
+                <option value="transfer">Transfer / Sale</option>
+                <option value="charge">Charge / Mortgage</option>
+                <option value="lease">Lease</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Property Location</label>
+              <select id="calcLocation">
+                <option value="municipality">Within Municipality (4%)</option>
+                <option value="outside">Outside Municipality (2%)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Property Value (KES)</label>
+              <input type="number" id="calcValue" placeholder="e.g. 5000000">
+            </div>
+            <button class="btn btn-primary" id="calcBtn">Calculate Stamp Duty</button>
+            <div class="calc-result" id="calcResult" style="display:none">
+              <div class="calc-result-row">
+                <span>Property Value</span>
+                <span id="crValue"></span>
+              </div>
+              <div class="calc-result-row">
+                <span>Rate</span>
+                <span id="crRate"></span>
+              </div>
+              <div class="calc-result-row total">
+                <span>Stamp Duty Payable</span>
+                <span id="crDuty"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- ═══════ EXPORT TEMPLATE (hidden, used for rendering) ═══════ -->
+  <div id="exportTemplate" style="position:absolute;left:-9999px;top:0;">
+    <div id="exportDoc" style="width:794px;background:#fff;font-family:'Inter',sans-serif;color:#1a1d23;">
+      <!-- Header Banner -->
+      <div style="background:linear-gradient(135deg,#0f3d24,#1a5f3a);padding:32px 40px;color:#fff;">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <div>
+            <div style="font-size:22px;font-weight:700;letter-spacing:-0.5px;">KOIMERET LAND INFORMATION SYSTEM</div>
+            <div style="font-size:12px;opacity:0.7;margin-top:4px;">Department of Land, Housing &amp; Urban Planning — Bomet County Government</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-size:11px;opacity:0.6;">Document Generated</div>
+            <div style="font-size:13px;font-weight:600;" id="exportDate"></div>
+          </div>
+        </div>
+      </div>
+      <!-- Title Bar -->
+      <div style="background:#f0fdf4;border-bottom:2px solid #1a5f3a;padding:16px 40px;display:flex;justify-content:space-between;align-items:center;">
+        <div style="font-size:18px;font-weight:700;color:#0f3d24;" id="exportDocTitle">PARCEL INFORMATION REPORT</div>
+        <div style="font-size:12px;color:#6b7280;" id="exportDocRef"></div>
+      </div>
+      <!-- Content -->
+      <div style="padding:32px 40px;">
+        <!-- Parcel Info Table -->
+        <table style="width:100%;border-collapse:collapse;margin-bottom:24px;" id="exportInfoTable">
+          <tr style="background:#f7f8fa;">
+            <td style="padding:12px 16px;font-size:12px;color:#6b7280;font-weight:600;border:1px solid #e5e7eb;width:35%;">Parcel ID</td>
+            <td style="padding:12px 16px;font-size:14px;font-weight:600;border:1px solid #e5e7eb;" id="expParcelId"></td>
+          </tr>
+          <tr>
+            <td style="padding:12px 16px;font-size:12px;color:#6b7280;font-weight:600;border:1px solid #e5e7eb;">Record ID</td>
+            <td style="padding:12px 16px;font-size:14px;border:1px solid #e5e7eb;" id="expRecordId"></td>
+          </tr>
+          <tr style="background:#f7f8fa;">
+            <td style="padding:12px 16px;font-size:12px;color:#6b7280;font-weight:600;border:1px solid #e5e7eb;">Area (Square Metres)</td>
+            <td style="padding:12px 16px;font-size:14px;border:1px solid #e5e7eb;" id="expAreaSqm"></td>
+          </tr>
+          <tr>
+            <td style="padding:12px 16px;font-size:12px;color:#6b7280;font-weight:600;border:1px solid #e5e7eb;">Area (Hectares)</td>
+            <td style="padding:12px 16px;font-size:14px;border:1px solid #e5e7eb;" id="expAreaHa"></td>
+          </tr>
+          <tr style="background:#f7f8fa;">
+            <td style="padding:12px 16px;font-size:12px;color:#6b7280;font-weight:600;border:1px solid #e5e7eb;">Area (Acres)</td>
+            <td style="padding:12px 16px;font-size:14px;border:1px solid #e5e7eb;" id="expAreaAc"></td>
+          </tr>
+          <tr>
+            <td style="padding:12px 16px;font-size:12px;color:#6b7280;font-weight:600;border:1px solid #e5e7eb;">Classification</td>
+            <td style="padding:12px 16px;font-size:14px;border:1px solid #e5e7eb;" id="expClass"></td>
+          </tr>
+          <tr style="background:#f7f8fa;">
+            <td style="padding:12px 16px;font-size:12px;color:#6b7280;font-weight:600;border:1px solid #e5e7eb;">Location</td>
+            <td style="padding:12px 16px;font-size:14px;border:1px solid #e5e7eb;">Koimeret, Bomet County</td>
+          </tr>
+        </table>
+        <!-- Map Section -->
+        <div style="margin-bottom:24px;">
+          <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:#6b7280;font-weight:600;margin-bottom:10px;">PARCEL LAYOUT MAP</div>
+          <div style="border:2px solid #e5e7eb;border-radius:8px;overflow:hidden;height:360px;position:relative;" id="exportMapContainer">
+            <div id="exportMap" style="width:100%;height:100%;"></div>
+          </div>
+          <div style="font-size:10px;color:#9ca3af;margin-top:6px;">Map data &copy; OpenStreetMap contributors. Parcel boundaries from Bomet County Registry Index Maps.</div>
+        </div>
+        <!-- Ownership placeholder -->
+        <div style="border:1px dashed #d1d5db;border-radius:8px;padding:20px;margin-bottom:24px;background:#fafafa;">
+          <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:#9ca3af;font-weight:600;margin-bottom:8px;">OWNERSHIP DETAILS</div>
+          <div style="font-size:13px;color:#9ca3af;font-style:italic;">Ownership records will be available once integrated with the National Land Registry backend system.</div>
+        </div>
+        <!-- Encumbrances placeholder -->
+        <div style="border:1px dashed #d1d5db;border-radius:8px;padding:20px;background:#fafafa;">
+          <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:#9ca3af;font-weight:600;margin-bottom:8px;">ENCUMBRANCES &amp; CHARGES</div>
+          <div style="font-size:13px;color:#9ca3af;font-style:italic;">Encumbrance records will be available once integrated with the National Land Registry backend system.</div>
+        </div>
+      </div>
+      <!-- Footer -->
+      <div style="border-top:2px solid #e5e7eb;padding:20px 40px;display:flex;justify-content:space-between;align-items:center;background:#f7f8fa;">
+        <div style="font-size:10px;color:#9ca3af;">This document is generated from the Koimeret Land Information System.<br>Data sourced from Registry Index Maps — Dept. of Land, Housing &amp; Urban Planning, Bomet County.</div>
+        <div style="font-size:10px;color:#9ca3af;text-align:right;">Page 1 of 1<br><span id="expDocId"></span></div>
+      </div>
     </div>
+  </div>
 
-    <footer>
-        The data was geo-referenced and digitized from registry index maps accessed from the Department of Land, Housing, and Urban Planning, Bomet County.
-    </footer>
-
-    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.14.7/dist/umd/popper.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.3.1/dist/js/bootstrap.min.js"></script>
-    
-    <script src="script.js"></script>
+  <script src="script.js"></script>
 </body>
 </html>
