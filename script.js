@@ -338,9 +338,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Close mobile nav
     document.getElementById('sidebarNav').classList.remove('open');
+    document.getElementById('navOverlay').classList.remove('visible');
 
     // Re-invalidate map if parcel page
-    if (page === 'parcels') setTimeout(() => map.invalidateSize(), 100);
+    if (page === 'parcels') {
+      setTimeout(() => map.invalidateSize(), 100);
+      setTimeout(() => map.invalidateSize(), 300);
+    }
     if (page === 'dashboard') renderDashboard();
   }
 
@@ -350,6 +354,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
   document.getElementById('navToggle').addEventListener('click', () => {
     document.getElementById('sidebarNav').classList.toggle('open');
+    document.getElementById('navOverlay').classList.toggle('visible');
+  });
+
+  document.getElementById('navOverlay').addEventListener('click', () => {
+    document.getElementById('sidebarNav').classList.remove('open');
+    document.getElementById('navOverlay').classList.remove('visible');
   });
 
   // ══════════════════════════════════════

@@ -403,6 +403,9 @@ body {
   padding: 8px 12px;
   background: var(--surface);
   border-bottom: 1px solid var(--border);
+  position: relative;
+  z-index: 700;
+  flex-shrink: 0;
 }
 .map-toolbar-sep { width: 1px; height: 24px; background: var(--border); margin: 0 4px; }
 
@@ -430,7 +433,7 @@ body {
   border-radius: var(--radius);
   box-shadow: var(--shadow-lg);
   padding: 4px;
-  z-index: 10;
+  z-index: 800;
 }
 .layer-dropdown.visible { display: flex; flex-direction: column; gap: 2px; }
 .layer-opt {
@@ -449,7 +452,7 @@ body {
 .layer-opt:hover { background: var(--bg); }
 .layer-opt.active { background: var(--primary); color: #fff; }
 
-#map { flex: 1; width: 100%; }
+#map { flex: 1; width: 100%; position: relative; z-index: 1; }
 
 .map-tooltip {
   position: absolute; bottom: 16px; left: 50%;
@@ -692,34 +695,107 @@ body {
   .dashboard-grid { grid-template-columns: repeat(2, 1fr); }
   .dash-card.wide { grid-column: span 2; }
   .header-stats { display: none; }
+  .parcel-sidebar { width: 300px; min-width: 300px; }
 }
 
 @media (max-width: 768px) {
+  :root { --header-h: 50px; --nav-width: 260px; }
+
   .nav-toggle { display: flex; }
+  .header-brand h1 { font-size: 13px; }
+  .header-brand span { display: none; }
+  .header-stats { display: none; }
+
   .sidebar-nav {
     position: fixed;
     top: var(--header-h);
     left: 0;
     bottom: 0;
+    width: var(--nav-width);
     transform: translateX(-100%);
     z-index: 900;
     box-shadow: var(--shadow-lg);
   }
   .sidebar-nav.open { transform: translateX(0); }
+
+  /* Parcel viewer: map on top, list below */
+  .parcel-layout { flex-direction: column-reverse; height: 100%; }
   .parcel-sidebar {
-    position: absolute;
-    top: 0; left: 0;
-    height: 100%;
-    width: 100%;
-    min-width: unset;
+    width: 100% !important;
+    min-width: unset !important;
+    height: 40%;
     z-index: 600;
+    border-right: none;
+    border-top: 1px solid var(--border);
+    transition: height var(--transition);
+    overflow: hidden;
   }
-  .parcel-sidebar.collapsed { transform: translateX(-100%); }
-  .dashboard-grid { grid-template-columns: 1fr; }
+  .parcel-sidebar.collapsed {
+    height: 0;
+    opacity: 1;
+    transform: none;
+    pointer-events: none;
+  }
+
+  /* Detail panel on mobile */
+  .detail-panel {
+    position: fixed !important;
+    top: var(--header-h);
+    left: 0; right: 0; bottom: 0;
+    z-index: 800 !important;
+    border-radius: 0;
+  }
+
+  .map-wrap { flex: 1; min-height: 0; height: 60%; }
+  .map-toolbar { flex-wrap: wrap; padding: 6px 8px; gap: 3px; }
+  .map-btn { width: 32px; height: 32px; }
+  .map-btn svg { width: 16px; height: 16px; }
+  .map-toolbar-sep { height: 20px; }
+  .map-tooltip { font-size: 11px; padding: 6px 12px; bottom: 10px; }
+
+  .dashboard-grid { grid-template-columns: 1fr; padding: 16px; gap: 12px; }
   .dash-card.wide { grid-column: span 1; }
-  .services-grid { grid-template-columns: 1fr; padding: 16px; }
-  .export-layout { flex-direction: column; }
+  .stat-card { gap: 10px; }
+  .stat-val { font-size: 18px; }
+  .stat-icon { width: 40px; height: 40px; }
+
+  .services-grid { grid-template-columns: 1fr; padding: 16px; gap: 12px; }
+  .service-card { padding: 18px; }
+
+  .page-header { padding: 18px 16px 14px; }
+  .page-header h2 { font-size: 17px; }
+
+  .export-layout { flex-direction: column; padding: 16px; gap: 16px; height: auto; }
   .export-controls { width: 100%; }
-  .search-page-content { flex-direction: column; }
+  .export-preview-wrap { padding: 12px; }
+  .form-card { max-width: 100%; }
+
+  .search-page-content { flex-direction: column; padding: 16px; gap: 16px; }
   .search-result-card { min-width: unset; }
+
+  .calc-layout { padding: 16px; }
 }
+
+@media (max-width: 480px) {
+  .parcel-sidebar { height: 50vh; }
+  .map-wrap { height: 50vh; }
+  .filter-bar { gap: 4px; padding: 8px 12px; }
+  .chip { padding: 4px 10px; font-size: 10px; }
+  .parcel-item { padding: 8px 12px; gap: 10px; }
+  .pi { width: 30px; height: 30px; }
+  .p-info .pid { font-size: 12px; }
+  .p-info .area { font-size: 10px; }
+  .services-grid { grid-template-columns: 1fr; }
+  .dashboard-grid { grid-template-columns: 1fr; }
+}
+
+/* ── Overlay for mobile nav ── */
+.nav-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  top: var(--header-h);
+  background: rgba(0,0,0,0.3);
+  z-index: 899;
+}
+.nav-overlay.visible { display: block; }
