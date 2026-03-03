@@ -18,8 +18,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
   const tileLayers = {
     streets: L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OSM', maxZoom: 19 }),
-    satellite: L.tileLayer('https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', { attribution: '&copy; Google', maxZoom: 20 }),
-    topo: L.tileLayer('https://mt1.google.com/vt/lyrs=p&x={x}&y={y}&z={z}', { attribution: '&copy; Google', maxZoom: 20 })
+    satellite: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { attribution: 'Tiles &copy; Esri', maxZoom: 19, crossOrigin: true }),
+    topo: L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenTopoMap', maxZoom: 17 })
   };
 
   let currentTileLayer = tileLayers.streets;
@@ -63,16 +63,20 @@ document.addEventListener('DOMContentLoaded', function () {
           return { fillColor: c.fill, fillOpacity: 0.4, color: c.stroke, weight: 1.5 };
         },
         onEachFeature: (feature, layer) => {
-          layer.on('click', () => selectParcel(feature.properties.parcel_id));
+          const p = feature.properties;
+          layer.bindTooltip('Parcel ' + Math.round(p.parcel_id) + ' — ' + p['(Ha)'].toFixed(3) + ' Ha', {
+            sticky: true, className: 'parcel-tooltip', direction: 'top', offset: [0, -10]
+          });
+          layer.on('click', () => selectParcel(p.parcel_id));
           layer.on('mouseover', e => {
-            if (feature.properties.parcel_id !== selectedParcelId) {
+            if (p.parcel_id !== selectedParcelId) {
               layer.setStyle({ weight: 3, fillOpacity: 0.6 });
             }
             layer.bringToFront();
           });
           layer.on('mouseout', () => {
-            if (feature.properties.parcel_id !== selectedParcelId) {
-              const c = getColor(feature.properties['(Ha)']);
+            if (p.parcel_id !== selectedParcelId) {
+              const c = getColor(p['(Ha)']);
               layer.setStyle({ weight: 1.5, fillOpacity: 0.4 });
             }
           });

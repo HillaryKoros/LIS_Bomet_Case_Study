@@ -477,6 +477,20 @@ body {
   font-family: inherit;
 }
 
+/* ── Leaflet Tooltip ── */
+.parcel-tooltip {
+  background: var(--surface) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 8px !important;
+  box-shadow: var(--shadow) !important;
+  padding: 6px 12px !important;
+  font-family: 'Inter', sans-serif !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  color: var(--primary-dark) !important;
+}
+.parcel-tooltip::before { border-top-color: var(--border) !important; }
+
 /* ── Leaflet Overrides ── */
 .leaflet-control-zoom { display: none !important; }
 .leaflet-popup-content-wrapper { border-radius: var(--radius) !important; box-shadow: var(--shadow-lg) !important; padding: 0 !important; }
