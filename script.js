@@ -128,6 +128,8 @@ document.addEventListener('DOMContentLoaded', function () {
   // ══════════════════════════════════════
   // Select Parcel
   // ══════════════════════════════════════
+  function isMobile() { return window.innerWidth <= 768; }
+
   function selectParcel(parcelId) {
     selectedParcelId = parcelId;
 
@@ -147,16 +149,61 @@ document.addEventListener('DOMContentLoaded', function () {
       }
     });
 
-    if (target) map.fitBounds(target.getBounds(), { padding: [80, 80], maxZoom: 17 });
+    // On mobile: collapse sidebar so map is visible, then zoom
+    if (isMobile()) {
+      document.getElementById('parcelSidebar').classList.add('collapsed');
+      setTimeout(() => {
+        map.invalidateSize();
+        if (target) map.fitBounds(target.getBounds(), { padding: [40, 40], maxZoom: 17 });
+        showMobileInfoBar(parcelId);
+      }, 300);
+    } else {
+      if (target) map.fitBounds(target.getBounds(), { padding: [80, 80], maxZoom: 17 });
+      showDetail(parcelId);
+    }
 
     // Update list
     document.querySelectorAll('.parcel-item').forEach(el => {
       el.classList.toggle('active', parseFloat(el.dataset.pid) === parcelId);
     });
-    const activeEl = document.querySelector('.parcel-item.active');
-    if (activeEl) activeEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
 
-    showDetail(parcelId);
+  // Mobile floating info bar
+  function showMobileInfoBar(parcelId) {
+    const p = allParcels.find(x => x.parcelId === parcelId);
+    if (!p) return;
+    const c = getColor(p.ha);
+
+    // Remove existing
+    const existing = document.getElementById('mobileInfoBar');
+    if (existing) existing.remove();
+
+    const bar = document.createElement('div');
+    bar.id = 'mobileInfoBar';
+    bar.innerHTML = `
+      <div class="mib-content">
+        <div class="mib-main">
+          <strong>Parcel ${Math.round(p.parcelId)}</strong>
+          <span>${p.ha.toFixed(3)} Ha &middot; ${fmt(p.area)} m&sup2;</span>
+        </div>
+        <div class="mib-actions">
+          <button class="mib-btn mib-detail" id="mibDetail">Details</button>
+          <button class="mib-btn mib-close" id="mibClose">&times;</button>
+        </div>
+      </div>`;
+    document.querySelector('.map-wrap').appendChild(bar);
+
+    document.getElementById('mibDetail').addEventListener('click', () => {
+      bar.remove();
+      document.getElementById('parcelSidebar').classList.remove('collapsed');
+      showDetail(parcelId);
+    });
+
+    document.getElementById('mibClose').addEventListener('click', () => {
+      bar.remove();
+      document.getElementById('parcelSidebar').classList.remove('collapsed');
+      setTimeout(() => map.invalidateSize(), 300);
+    });
   }
 
   // ══════════════════════════════════════
